@@ -19,7 +19,7 @@ crons = ["*/15 * * * *"]
 # و id چاپ‌شده را جای مقدار زیر بگذار.
 [[kv_namespaces]]
 binding = "CACHE"
-id = "PUT_YOUR_KV_NAMESPACE_ID_HERE"
+id = "1c11287f61f441bfa17502ac18a8c5cf"
 
 [observability]
 enabled = true
