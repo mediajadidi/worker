@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#080808">
+<!-- یوتیوب برای پلیر embed به Referer نیاز دارد؛ مقدار پیش‌فرض امن و صریح: -->
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!--
+  CSP — راهنما برای تیم DevOps / Release
+  ─────────────────────────────────────────────────────────────────
+  این فایل inline <style> و inline <script> دارد. برای CSP سخت‌گیرانه از nonce یا hash استفاده کنید:
+    Content-Security-Policy: script-src 'nonce-RANDOM' https://www.youtube.com; style-src 'nonce-RANDOM' 'unsafe-inline'
+  (یا برای تست: 'unsafe-inline' — فقط در توسعه)
+
+  منابع خارجی که باید مجاز باشند:
+    script-src : https://www.youtube.com          (YouTube IFrame API)
+    frame-src  : https://www.youtube-nocookie.com  (پلیر)
+    img-src    : https://i.ytimg.com https://yt3.ggpht.com https://i.postimg.cc
+    font-src   : https://cdn.jsdelivr.net
+    connect-src: 'self'   (یا آدرس Worker اگر API_BASE تنظیم شده)
+
+  ⚠️ پلیر یوتیوب داخل WebView اپ فقط وقتی کار می‌کند که صفحه از آدرس https لود شود (نه file://)،
+     وگرنه یوتیوب خطای ۱۵۳ می‌دهد.
+-->
+<title>AJ Sports | هایلایت فوتبال جهان</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://i.ytimg.com">
+<style>
+/* ── Self-hosted Vazirmatn font-face با font-display:swap ── */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v3.3.0/fonts/webfonts/Vazirmatn[wght].woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  /* swap: متن فوری با سیستم-فونت نمایش، پس از load فونت اصلی جایگزین می‌شود */
+  font-display: swap;
+  /* unicode-range: فقط کاراکترهای فارسی/عربی — باعث می‌شود فونت لاتین
+     از stack سیستمی تأمین شود و حجم دانلود به حداقل برسد */
+  unicode-range: U+0600-06FF, U+FB50-FDFF, U+FE70-FEFF, U+0200-024F, U+0000-00FF;
+}
+</style>
+<style>
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS — Single source of truth
+   FIX #7: All magic numbers promoted to CSS variables
+═══════════════════════════════════════════════════ */
+:root {
+  /* Color */
+  --bg:           #080808;
+  --surface:      rgba(255,255,255,0.04);
+  --border:       rgba(255,255,255,0.07);
+  --border-high:  rgba(255,255,255,0.15);
+  --gold:         #C9A84C;
+  --gold-dim:     rgba(201,168,76,0.18);
+  --gold-glow:    rgba(201,168,76,0.40);
+  --red-live:     #E53935;
+  --text-1:       #F2F2F2;
+  --text-2:       #909090;
+  --text-3:       #484848;
+
+  /* Shape */
+  --radius:       14px;
+  --radius-lg:    20px;
+
+  /* Motion */
+  --ease:         cubic-bezier(0.25, 0.8, 0.25, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout — FIX #7 */
+  --header-h:     0px;
+  --container-max:1320px;
+  --space-page:   28px;     /* horizontal padding for full-width sections */
+  --space-content:32px;     /* vertical padding inside container */
+  --gap-grid:     16px;     /* column gap in video grid */
+  --gap-grid-row: 36px;     /* row gap in video grid */
+  --card-min:     290px;    /* min card width for auto-fill */
+}
+
+/* ─── RESET ─── */
+*,::before,::after { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html { scroll-behavior:smooth; }
+body {
+  font-family:'Vazirmatn',system-ui,-apple-system,sans-serif;
+  background:var(--bg);
+  color:var(--text-1);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* FIX #10: removed dead .header / .header-logo / .header-center rule block.
+   --header-h is permanently 0px and no .header element exists in the body
+   markup below — these rules were unreachable dead code. The live-dot
+   keyframe is kept since .live-dot may still be used/reintroduced elsewhere. */
+.live-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:var(--red-live);
+  box-shadow:none;
+  animation:pulse-dot 1.6s infinite;
+}
+@keyframes pulse-dot {
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:.45;transform:scale(.65)}
+}
+
+/* ─── HERO BANNER ─── */
+.hero-banner {
+  width:100%; height:240px;
+  position:relative; overflow:hidden;
+}
+.hero-banner-bg {
+  position:absolute; inset:0;
+  background-image:url('https://i.postimg.cc/6Q7byrV7/IMG-20260615-165922-922.jpg');
+  background-size:cover; background-position:center 28%;
+  filter:brightness(.4) saturate(1.3);
+  transform:scale(1.05);
+  transition:transform 8s ease;
+}
+.hero-banner:hover .hero-banner-bg { transform:scale(1); }
+.hero-banner-gradient {
+  position:absolute; inset:0;
+  background:linear-gradient(to bottom, rgba(8,8,8,0) 0%, rgba(8,8,8,.95) 100%);
+}
+.hero-banner-content {
+  position:absolute; bottom:var(--space-page); right:var(--space-page); left:var(--space-page);
+  display:flex; flex-direction:column; gap:10px;
+}
+.hero-banner-title {
+  font-size:clamp(20px,4vw,34px);
+  font-weight:800; color:#fff; line-height:1.18;
+  text-shadow:0 2px 24px rgba(0,0,0,.8);
+}
+.hero-banner-sub { font-size:13px; color:rgba(255,255,255,.5); }
+
+/* ─── TABS ─── */
+.tabs-wrap {
+  position:relative; top:0; z-index:80;
+  background:rgba(8,8,8,.92);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 var(--space-page);
+}
+.tabs {
+  display:flex; gap:2px; padding:0 14px;
+  overflow-x:auto; scrollbar-width:none;
+  overscroll-behavior-x:contain; scroll-behavior:smooth;
+  /* محو لبه‌ها = نشانهٔ قابل‌اسکرول بودن */
+  -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+          mask-image:linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+}
+.tabs::-webkit-scrollbar { display:none; }
+.tab-btn {
+  flex-shrink:0; background:none; border:none;
+  display:inline-flex; align-items:center; gap:9px;
+  color:var(--text-2); font-family:inherit;
+  font-size:14px; font-weight:500; letter-spacing:.01em;
+  padding:14px 14px; cursor:pointer;
+  position:relative; transition:color .25s var(--ease);
+  outline:2px solid transparent; outline-offset:2px;
+  white-space:nowrap;
+}
+.tab-btn:focus-visible { outline:2px solid #fff; outline-offset:-2px; border-radius:8px; }
+@media (hover: none) { .tab-btn:focus-visible { outline:none; } }
+/* خط زیرین: سفید یکدست (تم چندرنگ حذف شد) */
+.tab-btn::after {
+  content:''; position:absolute;
+  bottom:0; right:12px; left:12px; height:2px;
+  background:#fff; border-radius:2px 2px 0 0;
+  transform:scaleX(0);
+  transition:transform .3s var(--ease-spring);
+}
+.tab-btn.active { color:#fff; font-weight:700; }
+.tab-btn.active::after { transform:scaleX(1); }
+.tab-btn:hover:not(.active) { color:var(--text-1); }
+
+/* آیکون/لوگوی تب — همیشه تک‌رنگ؛ غیرفعال: خاکستری، فعال: سفید */
+.tab-ic {
+  min-width:24px; height:24px; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  color:currentColor; opacity:.62;
+  transition:opacity .25s var(--ease), transform .3s var(--ease-spring);
+}
+.tab-btn:hover .tab-ic { opacity:.85; }
+.tab-btn.active .tab-ic { opacity:1; transform:scale(1.06); }
+.tab-logo { width:22px; height:22px; fill:currentColor; display:block; }
+.tab-logo-img { width:22px; height:22px; object-fit:contain; display:block; filter:brightness(0) invert(1); }
+.tab-mono {
+  direction:ltr; unicode-bidi:isolate; display:inline-block;
+  min-width:24px; text-align:center; white-space:nowrap;
+  font:800 9px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  letter-spacing:.03em; padding:4px 4px 3px;
+  border:1.5px solid currentColor; border-radius:7px;
+}
+.tab-skel { flex-shrink:0; width:104px; height:16px; margin:17px 10px; border-radius:8px; }
+
+/* ─── CONTAINER ─── */
+.container {
+  max-width:var(--container-max);
+  margin:0 auto;
+  padding:var(--space-content) var(--space-page) 100px;
+}
+
+.section-label {
+  font-size:11px; font-weight:700;
+  color:#ffffff; -webkit-text-fill-color:#ffffff;
+  letter-spacing:.12em; text-transform:uppercase;
+  margin-bottom:16px;
+  display:flex; align-items:center; gap:10px;
+}
+.section-label::before {
+  content:''; width:6px; height:6px; border-radius:50%;
+  background:var(--gold); flex-shrink:0;
+  box-shadow:0 0 8px var(--gold-glow);
+}
+.section-label::after {
+  content:''; flex:1; height:1px;
+  background:linear-gradient(to left, transparent, var(--border-high));
+}
+
+/* ═══════════════════════════════════════════════════
+   HERO SLIDESHOW — سیستم کارت برگزیده چرخشی
+   معماری: یک viewport ثابت + لایه‌های slide روی هم
+   انیمیشن: کراس‌فید ثابت در جای خود (بدون حرکت افقی) — فقط opacity
+═══════════════════════════════════════════════════ */
+
+/* ─── FEATURED SECTION ─── */
+.featured-section { margin-bottom:44px; }
+
+/* Viewport اصلی: clip می‌کند و ارتفاع ثابت نگه می‌دارد */
+.hero-slideshow {
+  position:relative; width:100%;
+  aspect-ratio:21/9; min-height:260px;
+  border-radius:var(--radius-lg);
+  overflow:hidden; background:#000;
+  /* جلوگیری از لرزش GPU روی موبایل */
+  transform:translateZ(0);
+  isolation: isolate;
+}
+
+/* هر اسلاید: لایه کامل روی هم چیده می‌شود */
+.hero-slide {
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  /* حالت پیش‌فرض: پنهان — بدون حرکت، فقط شفافیت صفر */
+  transform:translateX(0);
+  opacity:0;
+  transition:opacity 0.6s ease;
+  will-change:opacity;
+  cursor:pointer;
+}
+
+/* اسلاید فعال: مرکز، کاملاً نمایان */
+.hero-slide.hs-active {
+  transform:translateX(0);
+  opacity:1;
+  z-index:2;
+}
+
+/* اسلاید در حال خروج: محو می‌شود، بدون حرکت جانبی */
+.hero-slide.hs-exit {
+  transform:translateX(0);
+  opacity:0;
+  z-index:3; /* روی اسلاید ورودی قرار می‌گیرد */
+  pointer-events:none;
+}
+
+/* اسلاید بعدی: آماده ورود، ثابت در همان جای کارت — فقط محو→نمایان */
+.hero-slide.hs-enter {
+  transform:translateX(0);
+  opacity:0;
+  z-index:1;
+  pointer-events:none;
+}
+
+/* تصویر بند انگشتی داخل هر اسلاید */
+.hero-card-thumb {
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover;
+  transition:transform 8s ease;
+  will-change:transform;
+}
+/* Ken Burns: اسلاید فعال به آرامی zoom می‌کند */
+.hero-slide.hs-active .hero-card-thumb {
+  transform:scale(1.06);
+}
+.hero-slide:not(.hs-active) .hero-card-thumb {
+  transform:scale(1);
+}
+
+/* گرادیان سینماتیک */
+.hero-card-overlay {
+  position:absolute; inset:0;
+  background:
+    linear-gradient(135deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.22) 50%, rgba(0,0,0,.06) 100%),
+    linear-gradient(to top,   rgba(0,0,0,.95) 0%, transparent 60%);
+}
+
+/* اطلاعات پایین اسلاید */
+.hero-card-info {
+  position:absolute; bottom:0; right:0; left:0;
+  padding:28px max(var(--space-page), 16px) 24px;
+  /* جدا از overlay — z بالاتر */
+  z-index:4;
+}
+
+/* انیمیشن ظهور متن هنگام ورود اسلاید */
+.hero-slide.hs-active .hero-card-badge,
+.hero-slide.hs-active .hero-card-title,
+.hero-slide.hs-active .hero-card-meta {
+  animation: slideInfoIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.hero-slide.hs-active .hero-card-badge { animation-delay:0.25s; }
+.hero-slide.hs-active .hero-card-title { animation-delay:0.35s; }
+.hero-slide.hs-active .hero-card-meta  { animation-delay:0.45s; }
+
+@keyframes slideInfoIn {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.hero-card-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--gold); color:#000;
+  font-size:10px; font-weight:800; letter-spacing:.1em;
+  text-transform:uppercase; padding:4px 12px;
+  border-radius:100px; margin-bottom:12px;
+  opacity:0; /* شروع پنهان — animation روشن می‌کند */
+  /* رنگ زرد برگزیده دست‌نخورده باقی می‌ماند */
+}
+.hero-card-title {
+  font-size:clamp(15px,2.4vw,26px);
+  font-weight:700; color:#fff; line-height:1.3;
+  text-shadow:0 2px 18px rgba(0,0,0,.8);
+  max-width:600px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  opacity:0;
+}
+.hero-card-meta {
+  margin-top:8px; font-size:13px; color:rgba(255,255,255,.55);
+  opacity:0;
+}
+
+/* دکمه پخش مرکزی */
+.hero-play-btn {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:72px; height:72px; border-radius:50%;
+  background:rgba(255,255,255,.12);
+  backdrop-filter:blur(16px) saturate(2);
+  -webkit-backdrop-filter:blur(16px) saturate(2);
+  border:2px solid rgba(255,255,255,.3);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  transition:all .35s var(--ease-spring);
+  z-index:5; outline:none; padding:0;
+}
+.hero-slide:hover .hero-play-btn {
+  background:rgba(255,255,255,.95); border-color:transparent;
+  transform:translate(-50%,-50%) scale(1.12);
+  box-shadow:0 12px 40px rgba(0,0,0,.5);
+}
+.hero-play-btn svg { width:30px; height:30px; fill:#fff; margin-right:-3px; transition:fill .3s ease; }
+.hero-slide:hover .hero-play-btn svg { fill:#080808; }
+
+/* ─── SLIDESHOW CONTROLS ─── */
+
+/* نوار پیشرفت زمان‌بندی — بالای کارت */
+.hs-progress-bar {
+  position:absolute; top:0; right:0; left:0;
+  height:3px; z-index:10; overflow:hidden;
+  background:rgba(255,255,255,.08);
+}
+.hs-progress-fill {
+  height:100%;
+  background:#fff;
+  width:0%;
+  /* مدت‌زمان از JS تنظیم می‌شود */
+  transition:width linear;
+  border-radius:0 2px 2px 0;
+  box-shadow:none;
+}
+
+/* نشانگرهای dot پایین سمت چپ */
+.hs-dots {
+  position:absolute; bottom:20px; left:max(var(--space-page), 16px);
+  display:flex; gap:6px; z-index:10;
+  direction:ltr; /* dotها همیشه چپ به راست */
+}
+.hs-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:rgba(255,255,255,.3);
+  border:none; padding:0; cursor:pointer;
+  transition:all .35s var(--ease-spring);
+}
+.hs-dot.active {
+  width:22px; border-radius:3px;
+  background:#fff;
+  box-shadow:none;
+}
+
+/* دکمه‌های ناوبری چپ/راست — ظاهر هنگام hover */
+.hs-nav-btn {
+  position:absolute; top:50%; z-index:10;
+  transform:translateY(-50%);
+  width:42px; height:42px; border-radius:50%;
+  background:rgba(8,8,8,.55);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.15);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; outline:none; padding:0;
+  color:#fff;
+  opacity:0;
+  transition:opacity .3s ease, background .25s ease, transform .25s var(--ease-spring);
+}
+.hero-slideshow:hover .hs-nav-btn { opacity:1; }
+.hs-nav-btn:hover { background:rgba(255,255,255,.16); border-color:#fff; transform:translateY(-50%) scale(1.08); }
+.hs-nav-btn svg { width:20px; height:20px; fill:currentColor; }
+.hs-nav-prev { right:16px; }
+.hs-nav-next { left:16px; }
+
+/* شماره اسلاید — گوشه بالا راست */
+.hs-counter {
+  position:absolute; top:16px; right:var(--space-page);
+  z-index:10;
+  font-size:11px; font-weight:700;
+  color:rgba(255,255,255,.5);
+  direction:ltr; unicode-bidi:isolate;
+  letter-spacing:.05em;
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  padding:3px 10px; border-radius:100px;
+  border:1px solid rgba(255,255,255,.1);
+}
+
+/* موبایل: dot و counter تنظیم می‌شوند */
+@media(max-width:599px) {
+  .hero-slideshow { aspect-ratio:16/9; border-radius:0; min-height:unset; }
+  .hero-play-btn { width:58px; height:58px; }
+  .hero-play-btn svg { width:24px; height:24px; }
+  .hs-dots { bottom:14px; left:16px; }
+  .hs-counter { top:12px; right:16px; }
+  .hs-nav-btn { opacity:.7; } /* روی موبایل همیشه کمی نمایان */
+}
+
+@media(prefers-reduced-motion:reduce){
+  .hero-slide { transition:opacity .4s ease; transform:none !important; }
+  .hero-slide.hs-exit { opacity:0; }
+  .hero-card-thumb { transition:none; }
+  .slideInfoIn, .hero-slide.hs-active .hero-card-badge,
+  .hero-slide.hs-active .hero-card-title,
+  .hero-slide.hs-active .hero-card-meta { animation:none; opacity:1; }
+}
+
+/* ─── VIDEO GRID ─── */
+/* FIX #1: full-width on mobile via negative margin trick when padding is 0 */
+.video-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(var(--card-min), 1fr));
+  gap:var(--gap-grid-row) var(--gap-grid);
+}
+
+/* ─── VIDEO CARD ─── */
+.video-card {
+  display:flex; flex-direction:column;
+  background:none; border-radius:var(--radius);
+  overflow:hidden; position:relative; cursor:pointer;
+  /* FIX #4: no video tag in DOM by default — injected on demand */
+  content-visibility:auto;
+  /* FIX v9-③: از auto keyword استفاده می‌کنیم تا مرورگر پس از اولین
+     رندر، ارتفاع واقعی کارت را حفظ کند. این از پرش ناگهانی Layout
+     بین ۲۴۰px فرضی و ~۳۰۰px واقعی (موبایل تک‌ستونه) جلوگیری می‌کند. */
+  contain-intrinsic-size: auto var(--card-min) auto 240px;
+  transition:transform .3s var(--ease), box-shadow .3s var(--ease);
+}
+.video-card:hover { transform:translateY(-2px); box-shadow:0 14px 32px -10px rgba(0,0,0,.55); }
+.video-card:focus-within { outline:2px solid #fff; outline-offset:4px; border-radius:var(--radius); }
+
+.media-wrap {
+  position:relative; width:100%;
+  aspect-ratio:16/9; background:#0a0a0a;
+  overflow:hidden; border-radius:var(--radius);
+  transform:translateZ(0);
+}
+.thumb-img {
+  width:100%; height:100%; object-fit:cover; display:block;
+  transition:transform .6s cubic-bezier(.25,.46,.45,.94);
+}
+.video-card:hover .thumb-img { transform:scale(1.04); }
+.card-overlay {
+  position:absolute; inset:0;
+  background:linear-gradient(180deg, transparent 55%, rgba(0,0,0,.5) 100%);
+  pointer-events:none; opacity:0; transition:opacity .3s ease;
+}
+.video-card:hover .card-overlay { opacity:1; }
+
+/* play btn */
+.play-btn {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:48px; height:48px; border-radius:50%;
+  background:rgba(16,16,16,.72);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border:1.5px solid rgba(255,255,255,.2);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .3s var(--ease-spring);
+  z-index:5; outline:none; padding:0;
+}
+.video-card:hover .play-btn {
+  background:rgba(255,255,255,.92); border-color:transparent;
+  transform:translate(-50%,-50%) scale(1.12);
+  box-shadow:0 6px 20px rgba(0,0,0,.5);
+}
+.play-btn svg { width:20px; height:20px; fill:#fff; margin-right:-2px; transition:fill .25s ease; }
+.video-card:hover .play-btn svg { fill:#080808; }
+
+/* ─── VIDEO WRAP (پلیر یوتیوب؛ فقط هنگام پخش ساخته می‌شود) ─── */
+.card-video-wrap {
+  position:absolute; inset:0;
+  display:none; z-index:10; background:#000;
+}
+.card-video-wrap.active { display:block; }
+.card-video-wrap iframe { position:absolute; inset:0; width:100%; height:100%; border:0; display:block; }
+.embed-error {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px; padding:16px; text-align:center;
+  color:var(--text-1); font-size:13px;
+}
+.embed-error a { color:#fff; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+.embed-error button {
+  background:rgba(255,255,255,.1); border:1px solid var(--border-high); color:#fff;
+  border-radius:100px; padding:5px 16px; font:inherit; font-size:12px; cursor:pointer;
+}
+.embed-error button:hover { background:rgba(255,255,255,.2); }
+/* مدت ویدیو روی تصویر */
+.dur {
+  position:absolute; bottom:8px; left:8px; z-index:4;
+  direction:ltr; padding:2px 6px; border-radius:6px;
+  background:rgba(0,0,0,.72); color:#fff;
+  font-size:11px; font-weight:600; letter-spacing:.02em; pointer-events:none;
+}
+
+/* ─── CARD META — FIX #2 ─── */
+.card-content {
+  display:flex;
+  gap:12px;
+  padding:12px 4px 0;
+  /* FIX #2: align-items flex-start keeps avatar pinned to top of text block */
+  align-items:flex-start;
+}
+.channel-avatar {
+  width:34px; height:34px; border-radius:50%;
+  object-fit:cover; flex-shrink:0;
+  /* FIX #2: small top margin aligns avatar optical centre with first text line */
+  margin-top:2px;
+  border:1px solid var(--border-high); background:#1a1a1a;
+  transition:border-color .3s var(--ease);
+}
+.video-card:hover .channel-avatar { border-color:var(--gold-glow); }
+.text-wrapper {
+  flex:1; display:flex; flex-direction:column;
+  /* FIX #2: tighter gap matches YouTube spec */
+  gap:3px;
+  min-width:0;
+}
+.video-title {
+  font-size:14.5px; font-weight:500; color:var(--text-1);
+  line-height:1.4; letter-spacing:.005em;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden; word-break:break-word;
+  transition:color .25s var(--ease);
+}
+.video-card:hover .video-title { color:#fff; }
+.video-meta { font-size:12px; color:var(--text-2); font-weight:400; letter-spacing:.01em; }
+
+/* ─── SKELETON ─── */
+.skeleton {
+  background:linear-gradient(90deg, #181818 25%, #222 50%, #181818 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.6s infinite linear;
+  border-radius:6px;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.skeleton-hero { width:100%; aspect-ratio:21/9; min-height:260px; border-radius:var(--radius-lg); }
+.skeleton-thumb { width:100%; aspect-ratio:16/9; border-radius:var(--radius); }
+.skeleton-avatar { width:34px; height:34px; border-radius:50%; flex-shrink:0; margin-top:2px; }
+.skeleton-line { height:13px; }
+
+/* ─── STATE MESSAGES — FIX #8 uses DOM API, styles kept ─── */
+.state-msg {
+  grid-column:1/-1; text-align:center; padding:60px 20px;
+  color:var(--text-3); font-size:15px; font-weight:500;
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+}
+.state-msg svg { width:40px; height:40px; opacity:.3; fill:currentColor; }
+.state-err { color:#ff6b6b; }
+
+/* ─── REVEAL ─── */
+.reveal { opacity:0; transform:translateY(14px); transition:opacity .5s var(--ease), transform .5s var(--ease); }
+.reveal.in { opacity:1; transform:translateY(0); }
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS — FIX #6
+   Mobile  < 600px
+   Tablet  600–1023px
+   Desktop 1024–1439px
+   XL      1440px+
+═══════════════════════════════════════════════════ */
+
+/* ── Tablet (768px) ── */
+@media(min-width:768px) and (max-width:1023px) {
+  :root {
+    --space-page:   20px;
+    --card-min:     260px;
+  }
+  .hero-banner { height:210px; }
+  .video-grid { gap:28px 14px; }
+}
+
+/* ── XL Desktop (1440px+) — FIX #6 ── */
+@media(min-width:1440px) {
+  :root {
+    --container-max: 1480px;
+    --space-page:    40px;
+    --card-min:      320px;
+    --gap-grid:      20px;
+    --gap-grid-row:  44px;
+  }
+  .hero-banner { height:280px; }
+  .hero-banner-title { font-size:38px; }
+}
+
+/* ── Mobile (<600px) — FIX #1 ── */
+@media(max-width:599px) {
+  :root {
+    --header-h:   0px;
+    --space-page: 0px;  /* FIX #1: zero side padding so cards bleed edge-to-edge */
+  }
+  .tabs-wrap { padding:0 16px; }
+  .hero-banner { height:190px; }
+  .hero-banner-content { right:16px; left:16px; bottom:20px; }
+
+  /* FIX #1: container zero horizontal padding, cards go full width */
+  .container { padding:20px 0 80px; }
+
+  /* section labels need their own indent when container has no padding */
+  .section-label { padding:0 16px; }
+  .featured-section { margin-bottom:28px; }
+
+  /* FIX #1: hero card and grid cards fill entire viewport width */
+  .hero-play-btn { width:58px; height:58px; }
+  .hero-play-btn svg { width:24px; height:24px; }
+
+  /* FIX #1: single-column, zero column-gap, no card border-radius */
+  .video-grid { grid-template-columns:1fr; gap:28px 0; }
+  .media-wrap, .video-card { border-radius:0; }
+
+  /* FIX #2: restore readable side padding on card meta only */
+  .card-content { padding:12px 16px 0; }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .reveal { opacity:1; transform:none; transition:none; }
+  .thumb-img, .hero-card-thumb { transition:none; }
+}
+
+/* ═══════════════════════════════════════════════════
+   FIX v9-④: View Transitions API — استایل ترنزیشن تب‌ها
+   مرورگر به صورت خودکار ::view-transition-old/new را
+   برای cross-fade استفاده می‌کند. با این تنظیمات:
+   - گرید ویدیو نامش را می‌گیرد → فقط این ناحیه animate می‌شود
+   - اسلایدشو hero نامش را می‌گیرد → جداگانه fade می‌شود
+   - مدت و easing سینماتیک تنظیم شده
+═══════════════════════════════════════════════════ */
+#video-grid    { view-transition-name: video-grid; }
+#hero-card-slot { view-transition-name: hero-slideshow; }
+
+@keyframes vt-fade-in  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes vt-fade-out { from { opacity:1; transform:translateY(0); }  to { opacity:0; transform:translateY(-8px); } }
+
+::view-transition-old(video-grid) {
+  animation: vt-fade-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+::view-transition-new(video-grid) {
+  animation: vt-fade-in  300ms cubic-bezier(0, 0, 0.2, 1) 80ms both;
+}
+::view-transition-old(hero-slideshow) {
+  animation: vt-fade-out 200ms ease both;
+}
+::view-transition-new(hero-slideshow) {
+  animation: vt-fade-in  320ms ease 60ms both;
+}
+
+@media(prefers-reduced-motion: reduce) {
+  ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════
+   FIX v9-⑤: Container Queries — ترند اصلی ۲۰۲۶
+   کارت‌ها بر اساس عرض گرید مادر خود تغییر می‌کنند،
+   نه بر اساس عرض کل viewport. این برای سیستم‌های
+   داشبوردی و سایدبارهای ورزشی فوق‌العاده است.
+   
+   چرخه:
+     ≥ 340px → حالت افقی: avatar و عنوان کنار هم
+     < 340px → حالت عمودی: meta خلاصه‌تر
+═══════════════════════════════════════════════════ */
+
+/* video-grid را به عنوان container تعریف می‌کنیم */
+.video-grid {
+  container-type: inline-size;
+  container-name: video-grid-cq;
+}
+
+/* کارت‌ها درون container گریدشان را می‌خوانند */
+@container video-grid-cq (max-width: 320px) {
+  .video-title  { font-size: 13px; -webkit-line-clamp: 1; }
+  .video-meta   { display: none; }
+  .card-content { padding: 8px 12px 0; gap: 8px; }
+  .channel-avatar { width: 28px; height: 28px; }
+}
+
+@container video-grid-cq (min-width: 480px) {
+  .video-title  { font-size: 15px; }
+  .card-content { padding: 14px 6px 0; }
+}
+
+@container video-grid-cq (min-width: 700px) {
+  .video-title  { font-size: 15.5px; }
+  .channel-avatar { width: 38px; height: 38px; }
+}
+/* ─── EXTRAS ─── */
+.skeleton-card { display:flex; flex-direction:column; gap:12px; }
+.skeleton-row { display:flex; gap:12px; padding:0 4px; }
+.skeleton-text { flex:1; display:flex; flex-direction:column; gap:8px; padding-top:4px; }
+.retry-btn {
+  margin-top:4px; background:rgba(255,255,255,.08); border:1px solid var(--border-high);
+  color:#fff; border-radius:100px; padding:8px 22px; font:inherit; font-size:14px; cursor:pointer;
+  transition:background .25s var(--ease);
+}
+.retry-btn:hover { background:rgba(255,255,255,.18); }
+.featured-section[hidden] { display:none; }
+
+</style>
+</head>
+<body>
+
+<!-- ═══ آیکون‌های تب (SVG سفید/تک‌رنگ) ═══
+     • lg-premier-league: Simple Icons (CC0). علامت تجاری متعلق به Premier League است.
+     • تب‌های دیگر تا زمانی که SVG رسمی اضافه نکنید، نشان مخفف (مثلاً UCL) نمایش می‌دهند.
+       برای افزودن: <symbol id="lg-ID"> با همان ID تب بسازید یا LOGO_OVERRIDES را در اسکریپت پر کنید. -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
+  <symbol id="lg-premier-league" viewBox="0 0 24 24"><path d="M11.176 0s-.681 1.938-.867 2.527C9.844 2.202 8.386 1.194 7.78.775c.14.806.356 2.124.403 2.403-.124-.093-.821-.698-1.875-1.194.589.682 1.008 1.736 1.271 2.588a10.566 10.566 0 0 1 5.238-1.379c.977 0 1.94.14 2.854.403.093-.884.279-1.968.682-2.758-.915.728-1.474 1.503-1.551 1.596-.031-.186-.093-1.52-.17-2.434-.372.403-1.8 2.016-2.063 2.264C12.384 1.938 11.176 0 11.176 0zm1.674 3.86c-1.674 0-3.3.386-4.696 1.115.713.046 1.224.668 1.395 1.164-.558-.45-1.442-.667-1.985-.078-.511.589-.464 1.688.047 2.572-1.193-.605-1.194-2.185-.775-2.867A10.392 10.392 0 0 0 3.61 9.594l1.07.172c-1.24 1.426-2.107 3.953-2.107 5.146l1.75-.543c-.31 1.054-.401 4.602.653 6.385 0 0 1.38-.96 2.945-3.363.65 2.17.356 3.985 0 5.767 2.82 1.581 6.09.696 8.012-.683l.357 1.35c2.248-1.489 3.488-3.628 3.72-6.124l.837.93c1.286-3.829.28-6.883-1.565-9.502l-.078.637-.79-.87s.17-.077.31-.263c.03-.078-.046-.495-.371-.774-.31.078-.56.264-.684.45a3.222 3.222 0 0 0-.93-.543c.062.077.604.79.65 1.007.466.388 1.102.837 1.52 1.395-.34-.403-1.984-.497-2.728-.078 0 0-.744-.868-1.426-1.473-.14-.511.326-.96.326-.96s-.48-.03-.93.42c-.682-.512-1.55-.745-1.55-.745-.961.14-1.612.82-1.612.82.217.14.512.327.776.42.511.217 1.006.139 1.332.139.263 0 .636.078.636.078s.635.495 1.565 1.565c-1.426-.574-2.915.062-3.969-.45-1.24-.62-1.146-1.595-1.146-1.595s-.836-.11-.836-.141c0 0 .618-.82 1.548-1.1l-.464-.402c.558-.465 1.534-1.085 3.115-1.24 0 0 .683.262 2.11 1.285.232-.326.308-1.008.308-1.008.728.248 2.217 1.333 2.806 1.984-.325-.759-.559-1.223-.636-2.013-.357-.357-1.24-1.101-3.069-1.551.295.605.264 1.115.264 1.115-.34-.45-1.055-1.146-1.55-1.332-.295-.015-.605-.047-.93-.047zm3.271 7.068a4.323 4.323 0 0 0 1.256.697v1.348c-.465.403-1.985 1.675-3.008 1.566-.573-1.1-1.115-2.107-1.115-2.107s1.565-1.318 2.867-1.504zm2.975.031c.465 1.131.59 2.48.078 3.379-.28-.605-.636-.947-1.008-1.35v-1.347s.418-.264.93-.682zm-.977 3.395c.465.511.559 1.068.559 1.068-.202 1.131-.836 1.846-1.301 2.14.046-.821-.172-1.519-.172-1.519-.34.372-1.13.743-1.596.836l-.697-1.3c.822-.032 2.201-1.194 2.201-1.194l1.006-.031z"/></symbol>
+  <!-- جدیدترین: رعدوبرق -->
+  <symbol id="lg-latest" viewBox="0 0 24 24"><path d="M13.6 2 5 13.4h5.4L9.4 22 19 9.8h-5.6z"/></symbol>
+  <!-- گل‌ها: توپ -->
+  <symbol id="lg-goals" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <path d="M12 8.2 15.6 10.8 14.2 15.1H9.8L8.4 10.8z" fill="currentColor"/>
+    <path d="M12 8.2V2.4M15.6 10.8l5.5-1.8M14.2 15.1l3.4 4.7M9.8 15.1l-3.4 4.7M8.4 10.8 2.9 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<div class="hero-banner">
+  <div class="hero-banner-bg"></div>
+  <div class="hero-banner-gradient"></div>
+  <div class="hero-banner-content">
+    <h1 class="hero-banner-title">بهترین لحظات فوتبال جهان</h1>
+    <p class="hero-banner-sub">هایلایت و گل‌های لیگ‌ها و تورنمنت‌های معتبر، خودکار و به‌روز</p>
+  </div>
+</div>
+
+<div class="tabs-wrap">
+  <div class="tabs" role="tablist" id="tab-list" aria-label="لیگ‌ها و تورنمنت‌ها">
+    <div class="skeleton tab-skel"></div><div class="skeleton tab-skel"></div><div class="skeleton tab-skel"></div><div class="skeleton tab-skel"></div>
+  </div>
+</div>
+
+<main class="container">
+  <section class="featured-section" aria-label="ویدیوی برگزیده">
+    <div class="section-label">برگزیده</div>
+    <div class="hero-slideshow" id="hero-card-slot" aria-label="اسلایدشو ویدیوهای برگزیده" role="region">
+      <div class="hs-progress-bar" id="hs-progress-bar">
+        <div class="hs-progress-fill" id="hs-progress-fill"></div>
+      </div>
+      <div class="hs-counter" id="hs-counter" aria-live="polite">1 / 1</div>
+      <button class="hs-nav-btn hs-nav-prev" id="hs-prev" aria-label="ویدیوی قبلی">
+        <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+      </button>
+      <button class="hs-nav-btn hs-nav-next" id="hs-next" aria-label="ویدیوی بعدی">
+        <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+      </button>
+      <div class="hs-dots" id="hs-dots" role="tablist" aria-label="انتخاب اسلاید"></div>
+    </div>
+  </section>
+  <section aria-label="ویدیوها">
+    <div class="section-label" id="grid-section-label">جدیدترین</div>
+    <div class="video-grid" id="video-grid" aria-live="polite"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════ */
+/* ''  → همان دامنه‌ای که Worker از آن سرو می‌شود (Workers Static Assets).
+   اگر این فایل را جای دیگری میزبانی می‌کنی، آدرس Worker را بنویس:
+   'https://aj-sports-highlights.<account>.workers.dev'  (و ALLOWED_ORIGIN را در wrangler.toml تنظیم کن) */
+const API_BASE = '';
+const CHANNEL_AVATAR_URL = "https://i.postimg.cc/YCqj6nvx/f07a58b2a2962089c4d036338d6ede29.jpg";
+
+const AUTOPLAY_ON_SCROLL = true;   /* پخش بی‌صدای ویدیو وقتی ≥۷۰٪ کارت دیده شد */
+const AUTOPLAY_DWELL_MS  = 900;    /* حداقل زمان ماندن روی کارت پیش از autoplay (جلوگیری از لود بی‌جا هنگام اسکرول سریع) */
+const CLIENT_CACHE_MS    = 3 * 60 * 1000;
+
+/* لوگوی رسمی هر تب: فایل SVG/PNG را در public/logos بگذار و اینجا ثبت کن.
+   هر رنگی که باشد، خودکار سفید نمایش داده می‌شود.  مثال:
+   'champions-league': 'logos/ucl.svg'                                        */
+const LOGO_OVERRIDES = {
+};
+
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+let tabs = [];                       /* از /api/tabs */
+let activeTabId = 'latest';
+let loadToken = 0;                   /* برای نادیده‌گرفتن پاسخ‌های کهنه هنگام سوییچ سریع تب */
+const dataCache = new Map();         /* id → { at, data, promise } */
+const VID_RE = /^[\w-]{11}$/;
+const $ = id => document.getElementById(id);
+
+/* ════════════════════════════════════════
+   UTILS
+════════════════════════════════════════ */
+const fmt = s => (isFinite(s) && s > 0)
+  ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+  : '';
+const san = s => (s || '').replace(/[\u202e\u200f\u200b]/g, '').replace(/"/g, '&quot;');
+const FA = '۰۱۲۳۴۵۶۷۸۹';
+const fa = n => String(n).replace(/\d/g, d => FA[d]);
+
+function timeAgo(iso) {
+  const t = Date.parse(iso);
+  if (isNaN(t)) return '';
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return 'لحظاتی پیش';
+  const m = s / 60;   if (m < 60)  return `${fa(Math.floor(m))} دقیقه پیش`;
+  const h = m / 60;   if (h < 24)  return `${fa(Math.floor(h))} ساعت پیش`;
+  const d = h / 24;   if (d < 7)   return `${fa(Math.floor(d))} روز پیش`;
+  if (d < 30)  return `${fa(Math.floor(d / 7))} هفته پیش`;
+  if (d < 365) return `${fa(Math.floor(d / 30))} ماه پیش`;
+  return `${fa(Math.floor(d / 365))} سال پیش`;
+}
+
+async function api(path) {
+  const res = await fetch(API_BASE + path, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+const tabById = id => tabs.find(t => t.id === id);
+const tabTitle = id => (tabById(id) || {}).title || '';
+
+/* پیام وضعیت (DOM API؛ بدون innerHTML) */
+function makeStateEl(message, { isError = false, onRetry = null } = {}) {
+  const wrap = document.createElement('div');
+  wrap.className = 'state-msg' + (isError ? ' state-err' : '');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z');
+  svg.appendChild(path);
+  const p = document.createElement('p');
+  p.textContent = message;
+  wrap.append(svg, p);
+  if (onRetry) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'retry-btn'; b.textContent = 'تلاش دوباره';
+    b.addEventListener('click', onRetry);
+    wrap.appendChild(b);
+  }
+  return wrap;
+}
+
+function renderSkeletons() {
+  const grid = $('video-grid');
+  grid.textContent = '';
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < 8; i++) {
+    const card = document.createElement('div');
+    card.className = 'skeleton-card';
+    const th = document.createElement('div'); th.className = 'skeleton skeleton-thumb';
+    const row = document.createElement('div'); row.className = 'skeleton-row';
+    const av = document.createElement('div'); av.className = 'skeleton skeleton-avatar';
+    const tx = document.createElement('div'); tx.className = 'skeleton-text';
+    const l1 = document.createElement('div'); l1.className = 'skeleton skeleton-line'; l1.style.width = '92%';
+    const l2 = document.createElement('div'); l2.className = 'skeleton skeleton-line'; l2.style.width = '55%';
+    tx.append(l1, l2); row.append(av, tx); card.append(th, row);
+    frag.appendChild(card);
+  }
+  grid.appendChild(frag);
+}
+
+/* ════════════════════════════════════════
+   YOUTUBE PLAYER  (IFrame API · youtube-nocookie)
+   فقط یک پلیر در هر لحظه؛ با توقف، iframe کاملاً حذف می‌شود (حافظه/باتری آزاد).
+════════════════════════════════════════ */
+let ytApiPromise = null;
+function loadYouTubeAPI() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise((resolve, reject) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (prev) prev(); resolve(); };
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    s.async = true;
+    s.onerror = () => { ytApiPromise = null; reject(new Error('yt-api')); };
+    document.head.appendChild(s);
+  });
+  return ytApiPromise;
+}
+
+let current = null;   /* { mw, vw, player, auto, onStop } */
+
+function stopCurrent() {
+  const c = current;
+  if (!c) return;
+  current = null;
+  try { if (c.player) c.player.destroy(); } catch (_) { /* noop */ }
+  c.vw.remove();
+  try { if (c.onStop) c.onStop(); } catch (_) { /* noop */ }
+}
+
+function showEmbedError(vw, videoId) {
+  vw.textContent = '';
+  const box = document.createElement('div');
+  box.className = 'embed-error';
+  const p = document.createElement('p');
+  p.textContent = 'امکان پخش این ویدیو داخل سایت نیست.';
+  const a = document.createElement('a');
+  a.href = `https://www.youtube.com/watch?v=${videoId}`;
+  a.target = '_blank'; a.rel = 'noopener noreferrer';
+  a.textContent = 'مشاهده در یوتیوب';
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = 'بستن';
+  b.addEventListener('click', e => { e.stopPropagation(); stopCurrent(); });
+  box.append(p, a, b);
+  vw.appendChild(box);
+}
+
+async function playVideo(mw, videoId, title, { auto = false, onStop = null } = {}) {
+  if (!VID_RE.test(videoId)) return;
+  stopCurrent();
+  const vw = document.createElement('div');
+  vw.className = 'card-video-wrap active';
+  const mount = document.createElement('div');
+  vw.appendChild(mount);
+  mw.appendChild(vw);
+  const token = { mw, vw, player: null, auto, onStop };
+  current = token;
+  /* هنگام پخش، اسلایدشوی برگزیده متوقف می‌شود (اگر این ویدیو داخل آن است) */
+  try { await loadYouTubeAPI(); }
+  catch (_) { if (current === token) showEmbedError(vw, videoId); return; }
+  if (current !== token) return;      /* در این فاصله چیز دیگری پخش/توقف شد */
+
+  const vars = { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1, iv_load_policy: 3, fs: 1, hl: 'fa' };
+  if (auto) vars.mute = 1;
+  if (/^https?:$/.test(location.protocol)) vars.origin = location.origin;
+
+  token.player = new YT.Player(mount, {
+    host: 'https://www.youtube-nocookie.com',
+    videoId,
+    width: '100%',
+    height: '100%',
+    playerVars: vars,
+    events: {
+      onReady: e => {
+        try { e.target.getIframe().title = title || 'YouTube video'; } catch (_) { /* noop */ }
+        if (auto) e.target.mute();
+        e.target.playVideo();
+      },
+      onStateChange: e => { if (e.data === 0 /* ENDED */ && current === token) stopCurrent(); },
+      onError: () => {
+        if (current !== token) return;
+        try { token.player.destroy(); } catch (_) { /* noop */ }
+        token.player = null;
+        showEmbedError(vw, videoId);
+      },
+    },
+  });
+}
+
+/* ════════════════════════════════════════
+   AUTOPLAY (muted) + REVEAL
+════════════════════════════════════════ */
+const playFns = new WeakMap();       /* media-wrap → (auto:boolean) => void */
+const dwellTimers = new WeakMap();
+let autoObserver = null;
+
+function autoplayAllowed() {
+  if (!AUTOPLAY_ON_SCROLL || !('IntersectionObserver' in window)) return false;
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+  if (navigator.connection && navigator.connection.saveData) return false;
+  return true;
+}
+
+function setupAutoplay() {
+  if (autoObserver) autoObserver.disconnect();
+  if (!autoplayAllowed()) return;
+  autoObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const mw = entry.target;
+      clearTimeout(dwellTimers.get(mw));
+      if (entry.intersectionRatio >= 0.7) {
+        dwellTimers.set(mw, setTimeout(() => {
+          if (!current && !document.hidden) { const fn = playFns.get(mw); if (fn) fn(true); }
+        }, AUTOPLAY_DWELL_MS));
+      } else if (current && current.mw === mw) {
+        /* پخش خودکار: با خروج از ۷۰٪ قطع می‌شود؛ پخش دستی: فقط وقتی کارت کامل از دید رفت */
+        if (current.auto || entry.intersectionRatio === 0) stopCurrent();
+      }
+    });
+  }, { threshold: [0, 0.7] });
+  document.querySelectorAll('#video-grid .media-wrap').forEach(el => autoObserver.observe(el));
+}
+
+function setupReveal() {
+  const els = document.querySelectorAll('.reveal:not(.in)');
+  if (!('IntersectionObserver' in window)) { els.forEach(e => e.classList.add('in')); return; }
+  const ro = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); ro.unobserve(e.target); } });
+  }, { threshold: 0.06 });
+  els.forEach(el => ro.observe(el));
+}
+
+/* ════════════════════════════════════════
+   HERO SLIDESHOW ENGINE
+   hs-enter → hs-active (Ken Burns) → hs-exit
+════════════════════════════════════════ */
+const SLIDE_DURATION = 6000;
+const TRANSITION_MS  = 600;
+
+let hsSlides = [], hsIndex = 0, hsTimer = null, hsPaused = false, hsTransiting = false, hsResumeT = null;
+
+function buildHeroSlide(v, index) {
+  const title = v.title || 'بدون عنوان';
+  const slide = document.createElement('div');
+  slide.className = 'hero-slide hs-enter';
+  slide.setAttribute('role', 'group');
+  slide.setAttribute('aria-label', `اسلاید ${index + 1}: ${san(title)}`);
+
+  const thumbEl = document.createElement('img');
+  thumbEl.className = 'hero-card-thumb';
+  thumbEl.src = v.thumbHd || v.thumb;
+  thumbEl.alt = title;
+  thumbEl.loading = index === 0 ? 'eager' : 'lazy';
+  thumbEl.addEventListener('error', () => {
+    if (thumbEl.dataset.fb) return;
+    thumbEl.dataset.fb = '1';
+    thumbEl.src = `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`;
+  });
+
+  const overlEl = document.createElement('div'); overlEl.className = 'hero-card-overlay';
+  const infoEl = document.createElement('div');  infoEl.className = 'hero-card-info';
+  const badge = document.createElement('div');   badge.className = 'hero-card-badge'; badge.textContent = '★ برگزیده';
+  const h2 = document.createElement('h2');       h2.className = 'hero-card-title';   h2.textContent = title;
+  const meta = document.createElement('div');    meta.className = 'hero-card-meta';
+  const bdi = document.createElement('bdi');     bdi.textContent = v.channel || '';
+  meta.append(bdi, ` • ${timeAgo(v.publishedAt)}`);
+  infoEl.append(badge, h2, meta);
+
+  const playBtn = document.createElement('button');
+  playBtn.className = 'hero-play-btn';
+  playBtn.setAttribute('aria-label', `پخش: ${san(title)}`);
+  playBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+  const mw = document.createElement('div');
+  mw.className = 'hero-media-wrap';
+  mw.style.cssText = 'position:absolute;inset:0;z-index:6;pointer-events:none;';
+
+  slide.append(thumbEl, overlEl, infoEl, playBtn, mw);
+
+  const hideUI = () => [thumbEl, infoEl, overlEl, playBtn].forEach(el => { el.style.display = 'none'; });
+  const showUI = () => { [thumbEl, infoEl, overlEl, playBtn].forEach(el => { el.style.display = ''; }); hsResume(); };
+
+  const start = e => {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    hsPause();
+    hideUI();
+    mw.style.pointerEvents = 'auto';
+    playVideo(mw, v.id, title, { onStop: () => { mw.style.pointerEvents = 'none'; showUI(); } });
+  };
+  playBtn.addEventListener('click', start);
+  thumbEl.addEventListener('click', start);
+  return slide;
+}
+
+function buildDots(count) {
+  const dotsEl = $('hs-dots');
+  dotsEl.textContent = '';
+  for (let i = 0; i < count; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'hs-dot' + (i === 0 ? ' active' : '');
+    dot.setAttribute('role', 'tab');
+    dot.setAttribute('aria-label', `اسلاید ${i + 1}`);
+    dot.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+    dot.addEventListener('click', () => hsUserNav(() => hsGoTo(i)));
+    dotsEl.appendChild(dot);
+  }
+}
+function updateDots(idx) {
+  document.querySelectorAll('.hs-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === idx);
+    d.setAttribute('aria-selected', i === idx ? 'true' : 'false');
+  });
+}
+function updateCounter(idx, total) { const el = $('hs-counter'); if (el) el.textContent = `${idx + 1} / ${total}`; }
+
+function startProgress() {
+  const fill = $('hs-progress-fill'); if (!fill) return;
+  fill.style.transition = 'none'; fill.style.width = '0%';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fill.style.transition = `width ${SLIDE_DURATION}ms linear`; fill.style.width = '100%';
+  }));
+}
+function stopProgress() { const fill = $('hs-progress-fill'); if (fill) { fill.style.transition = 'none'; fill.style.width = fill.style.width; } }
+function resetProgress() { const fill = $('hs-progress-fill'); if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; } }
+
+function hsGoTo(nextIdx, force = false) {
+  if (hsTransiting && !force) return;
+  if (nextIdx === hsIndex && !force) return;
+  if (!hsSlides.length) return;
+  hsTransiting = true;
+  resetProgress();
+  const prev = hsSlides[hsIndex], next = hsSlides[nextIdx];
+  prev.classList.remove('hs-active'); prev.classList.add('hs-exit');
+  next.classList.remove('hs-enter');  next.classList.add('hs-active');
+  hsIndex = nextIdx;
+  updateDots(hsIndex); updateCounter(hsIndex, hsSlides.length);
+  setTimeout(() => {
+    prev.classList.remove('hs-exit'); prev.classList.add('hs-enter');
+    hsTransiting = false;
+    if (!hsPaused) startProgress();
+  }, TRANSITION_MS + 50);
+}
+const hsNext = () => hsGoTo((hsIndex + 1) % hsSlides.length);
+const hsPrev = () => hsGoTo((hsIndex - 1 + hsSlides.length) % hsSlides.length);
+
+function hsClearTimer() { if (hsTimer) { clearInterval(hsTimer); hsTimer = null; } stopProgress(); }
+function hsStartTimer() {
+  hsClearTimer();
+  if (hsSlides.length <= 1) return;
+  hsTimer = setInterval(() => { if (!hsPaused) hsNext(); }, SLIDE_DURATION);
+  startProgress();
+}
+function hsPause()  { hsPaused = true; hsClearTimer(); }
+function hsResume() { if (current || !hsSlides.length) return; hsPaused = false; hsStartTimer(); }
+/* ناوبری کاربر: توقف موقت و ادامه پس از یک دوره؛ تایمرهای قبلی لغو می‌شوند (بدون انباشت) */
+function hsUserNav(fn) {
+  hsPause(); fn();
+  clearTimeout(hsResumeT);
+  hsResumeT = setTimeout(hsResume, SLIDE_DURATION);
+}
+
+/* رویدادهای اسلایدشو فقط یک‌بار بسته می‌شوند */
+let slideshowBound = false;
+function initSlideshowControls() {
+  if (slideshowBound) return;
+  slideshowBound = true;
+  const slot = $('hero-card-slot');
+  $('hs-prev').addEventListener('click', () => hsUserNav(hsPrev));
+  $('hs-next').addEventListener('click', () => hsUserNav(hsNext));
+  slot.addEventListener('mouseenter', () => { if (!hsPaused) hsClearTimer(); });
+  slot.addEventListener('mouseleave', () => { if (!hsPaused) hsStartTimer(); });
+  slot.addEventListener('focusin',    () => { if (!hsPaused) hsClearTimer(); });
+  slot.addEventListener('focusout',   () => { if (!hsPaused) hsStartTimer(); });
+  slot.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') hsUserNav(hsPrev);
+    if (e.key === 'ArrowLeft')  hsUserNav(hsNext);
+  });
+}
+
+function buildSlideshow(list) {
+  const featured = list.slice(0, 6);
+  const section = document.querySelector('.featured-section');
+  const slot = $('hero-card-slot');
+  clearTimeout(hsResumeT);
+  hsClearTimer();
+  slot.querySelectorAll('.hero-slide').forEach(s => s.remove());
+  hsSlides = []; hsIndex = 0; hsPaused = false; hsTransiting = false;
+
+  section.hidden = featured.length === 0;
+  if (!featured.length) return;
+
+  featured.forEach((v, i) => { const s = buildHeroSlide(v, i); slot.appendChild(s); hsSlides.push(s); });
+  hsSlides[0].classList.remove('hs-enter');
+  hsSlides[0].classList.add('hs-active');
+  buildDots(featured.length);
+  updateCounter(0, featured.length);
+
+  const multi = featured.length > 1;
+  ['hs-dots', 'hs-counter', 'hs-prev', 'hs-next', 'hs-progress-bar'].forEach(id => { $(id).style.display = multi ? '' : 'none'; });
+  if (multi) setTimeout(() => { if (!hsPaused && !current) hsStartTimer(); }, 800);
+}
+
+/* ════════════════════════════════════════
+   GRID
+════════════════════════════════════════ */
+function makeCard(v, i, showLeague) {
+  const title = v.title || 'بدون عنوان';
+  const article = document.createElement('article');
+  article.className = 'video-card reveal';
+  article.style.transitionDelay = `${Math.min(i * 45, 280)}ms`;
+
+  const mw = document.createElement('div');
+  mw.className = 'media-wrap';
+
+  const img = document.createElement('img');
+  img.className = 'thumb-img';
+  img.src = v.thumb;
+  img.alt = title;
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.addEventListener('error', () => {
+    if (img.dataset.fb) return;
+    img.dataset.fb = '1';
+    img.src = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`;
+  });
+
+  const overlay = document.createElement('div'); overlay.className = 'card-overlay';
+  const playBtn = document.createElement('button');
+  playBtn.className = 'play-btn';
+  playBtn.setAttribute('aria-label', `پخش: ${san(title)}`);
+  playBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  mw.append(img, overlay, playBtn);
+
+  const d = fmt(v.duration);
+  if (d) { const badge = document.createElement('span'); badge.className = 'dur'; badge.textContent = d; mw.appendChild(badge); }
+
+  const resetCard = () => { img.style.display = ''; playBtn.style.display = ''; };
+  const begin = auto => {
+    img.style.display = 'none'; playBtn.style.display = 'none';
+    playVideo(mw, v.id, title, { auto, onStop: resetCard });
+  };
+  playFns.set(mw, begin);
+  const onClick = e => { e.stopPropagation(); e.preventDefault(); begin(false); };
+  img.addEventListener('click', onClick);
+  playBtn.addEventListener('click', onClick);
+
+  const info = document.createElement('div'); info.className = 'card-content';
+  const avatar = document.createElement('img');
+  avatar.className = 'channel-avatar';
+  avatar.src = v.avatar || CHANNEL_AVATAR_URL;
+  avatar.alt = v.channel || '';
+  avatar.loading = 'lazy';
+  avatar.addEventListener('error', () => { if (!avatar.dataset.fb) { avatar.dataset.fb = '1'; avatar.src = CHANNEL_AVATAR_URL; } });
+
+  const tw = document.createElement('div'); tw.className = 'text-wrapper';
+  const h3 = document.createElement('h3'); h3.className = 'video-title'; h3.title = san(title); h3.textContent = title;
+  const meta = document.createElement('div'); meta.className = 'video-meta';
+  const bdi = document.createElement('bdi'); bdi.textContent = v.channel || '';
+  const parts = [];
+  if (showLeague && tabTitle(v.tab)) parts.push(`${tabTitle(v.tab)} • `);
+  meta.append(...parts, bdi, ` • ${timeAgo(v.publishedAt)}`);
+  tw.append(h3, meta);
+  info.append(avatar, tw);
+  article.append(mw, info);
+  return article;
+}
+
+function renderGrid(list, showLeague) {
+  const grid = $('video-grid');
+  grid.textContent = '';
+  const frag = document.createDocumentFragment();
+  list.forEach((v, i) => frag.appendChild(makeCard(v, i, showLeague)));
+  grid.appendChild(frag);
+  setupAutoplay();
+  setupReveal();
+}
+
+/* ════════════════════════════════════════
+   TABS
+════════════════════════════════════════ */
+const tabList = $('tab-list');
+const tabBtns = () => [...tabList.querySelectorAll('.tab-btn')];
+
+function makeTabIcon(t) {
+  const wrap = document.createElement('span');
+  wrap.className = 'tab-ic';
+  wrap.setAttribute('aria-hidden', 'true');
+  if (LOGO_OVERRIDES[t.id]) {
+    const im = document.createElement('img');
+    im.className = 'tab-logo-img'; im.src = LOGO_OVERRIDES[t.id]; im.alt = ''; im.decoding = 'async';
+    wrap.appendChild(im);
+  } else if (document.getElementById('lg-' + t.id)) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'tab-logo');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#lg-' + t.id);
+    svg.appendChild(use);
+    wrap.appendChild(svg);
+  } else {
+    const m = document.createElement('span');
+    m.className = 'tab-mono'; m.textContent = t.code || t.en.slice(0, 3).toUpperCase();
+    wrap.appendChild(m);
+  }
+  return wrap;
+}
+
+function renderTabs() {
+  tabList.textContent = '';
+  tabs.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tab-btn' + (t.id === activeTabId ? ' active' : '');
+    b.dataset.filter = t.id;
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', t.id === activeTabId ? 'true' : 'false');
+    b.setAttribute('tabindex', t.id === activeTabId ? '0' : '-1');
+    const label = document.createElement('span');
+    label.className = 'tab-tx'; label.textContent = t.title;
+    b.append(makeTabIcon(t), label);
+    tabList.appendChild(b);
+  });
+}
+
+function updateGridLabel(id) { const l = $('grid-section-label'); if (l) l.textContent = tabTitle(id) || ''; }
+
+function getTabData(id, { force = false } = {}) {
+  const c = dataCache.get(id);
+  if (c && !force) {
+    if (c.data && Date.now() - c.at < CLIENT_CACHE_MS) return Promise.resolve(c.data);
+    if (c.promise) return c.promise;
+  }
+  const p = api(`/api/highlights?tab=${encodeURIComponent(id)}`)
+    .then(data => { dataCache.set(id, { at: Date.now(), data }); return data; })
+    .catch(err => { if (c && c.data) { dataCache.set(id, { at: c.at, data: c.data }); return c.data; } dataCache.delete(id); throw err; });
+  dataCache.set(id, { ...(c || {}), promise: p });
+  return p;
+}
+
+function renderTab(data, id) {
+  const list = (data.videos || []).filter(v => v && VID_RE.test(v.id));
+  const virtual = id === 'latest' || id === 'goals';
+  if (!list.length) {
+    buildSlideshow([]);
+    const grid = $('video-grid');
+    grid.textContent = '';
+    if (data.warning === 'missing_api_key') console.warn('[AJ Sports] YOUTUBE_API_KEY روی Worker تنظیم نشده است.');
+    grid.appendChild(makeStateEl('هنوز ویدیویی در این بخش موجود نیست. کمی بعد دوباره سر بزن.'));
+    return;
+  }
+  buildSlideshow(list);
+  renderGrid(list, virtual);
+}
+
+async function showTab(id) {
+  const token = ++loadToken;
+  stopCurrent();
+  updateGridLabel(id);
+  const cached = dataCache.get(id);
+  if (!(cached && cached.data)) { buildSlideshow([]); renderSkeletons(); }
+  try {
+    const data = await getTabData(id);
+    if (token !== loadToken) return;
+    const update = () => renderTab(data, id);
+    if (document.startViewTransition && cached && cached.data) document.startViewTransition(update); else update();
+  } catch (err) {
+    if (token !== loadToken) return;
+    console.error('API Error:', err);
+    buildSlideshow([]);
+    const grid = $('video-grid');
+    grid.textContent = '';
+    grid.appendChild(makeStateEl('خطا در برقراری ارتباط با سرور. لطفاً اتصال خود را بررسی کنید.', { isError: true, onRetry: () => showTab(id) }));
+  }
+}
+
+function activateTab(btn, { focus = true } = {}) {
+  tabBtns().forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); b.setAttribute('tabindex', '-1'); });
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  btn.setAttribute('tabindex', '0');
+  if (focus) btn.focus({ preventScroll: true });
+  btn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  activeTabId = btn.dataset.filter;
+  showTab(activeTabId);
+}
+
+tabList.addEventListener('keydown', e => {
+  const list = tabBtns();
+  const idx = list.indexOf(document.activeElement);
+  if (idx === -1) return;
+  let next = -1;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp')        { e.preventDefault(); next = (idx - 1 + list.length) % list.length; }   /* RTL */
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown')  { e.preventDefault(); next = (idx + 1) % list.length; }
+  else if (e.key === 'Home') { e.preventDefault(); next = 0; }
+  else if (e.key === 'End')  { e.preventDefault(); next = list.length - 1; }
+  if (next !== -1) list[next].focus();
+});
+tabList.addEventListener('click', e => { const b = e.target.closest('.tab-btn'); if (b) activateTab(b); });
+/* چرخ ماوس روی نوار تب‌ها → اسکرول افقی */
+tabList.addEventListener('wheel', e => {
+  if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+  e.preventDefault();
+  const rtl = getComputedStyle(tabList).direction === 'rtl';
+  tabList.scrollBy({ left: rtl ? -e.deltaY : e.deltaY });
+}, { passive: false });
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+async function init() {
+  initSlideshowControls();
+  renderSkeletons();
+  getTabData('latest').catch(() => {});          /* موازی با /api/tabs */
+  try {
+    const res = await api('/api/tabs');
+    tabs = res.tabs || [];
+  } catch (err) {
+    console.error('API Error:', err);
+    tabList.textContent = '';
+    $('video-grid').textContent = '';
+    $('video-grid').appendChild(makeStateEl('خطا در برقراری ارتباط با سرور. لطفاً اتصال خود را بررسی کنید.', { isError: true, onRetry: init }));
+    return;
+  }
+  activeTabId = 'latest';
+  renderTabs();
+  updateGridLabel(activeTabId);
+  showTab(activeTabId);
+}
+
+document.addEventListener('visibilitychange', () => { if (document.hidden && current && current.auto) stopCurrent(); });
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
