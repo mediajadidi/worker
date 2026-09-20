@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────
+#  AJ Sports — Highlights  (Cloudflare Workers + Static Assets)
+#  دپلوی:  npx wrangler deploy
+# ─────────────────────────────────────────────────────────────
+name = "aj-sports-highlights"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+# سایت (public/index.html) و API با هم از یک آدرس سرو می‌شوند → CORS لازم نیست
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# رفرش خودکار ویدیوها (هر ۱۵ دقیقه). هر اجرا بخشی از کانال‌ها را می‌چرخاند.
+[triggers]
+crons = ["*/15 * * * *"]
+
+# ذخیره‌گاه نتایج. یک بار بساز:   npx wrangler kv namespace create CACHE
+# و id چاپ‌شده را جای مقدار زیر بگذار.
+[[kv_namespaces]]
+binding = "CACHE"
+id = "PUT_YOUR_KV_NAMESPACE_ID_HERE"
+
+[observability]
+enabled = true
+
+# تنظیمات غیرمحرمانه (اختیاری؛ مقدارهای پیش‌فرض داخل worker.js هست)
+[vars]
+REFRESH_MINUTES = "45"      # اگر cron خاموش بود، بعد از این مدت با بازدید رفرش می‌شود
+SUBREQUEST_BUDGET = "40"    # سقف درخواست به یوتیوب در هر اجرا (پلن Free: حداکثر ۵۰)
+MAX_PER_TAB = "40"          # حداکثر ویدیو در هر تب
+MIN_DURATION_SEC = "60"     # کوتاه‌تر از این = Shorts، حذف
+MAX_DURATION_SEC = "2700"   # بلندتر از این = بازی کامل، حذف
+# ALLOWED_ORIGIN = "https://your-domain.com"   # فقط اگر سایت را جای دیگری میزبانی می‌کنی
+
+# ── Secretها (اینجا ننویس!) ─────────────────────────────────
+#   npx wrangler secret put YOUTUBE_API_KEY     ← توکن YouTube Data API v3
+#   npx wrangler secret put ADMIN_TOKEN         ← اختیاری، برای /api/refresh
+# برای اجرای لوکال: فایل .dev.vars.example را به .dev.vars کپی و پر کن.
