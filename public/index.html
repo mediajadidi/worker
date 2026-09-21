@@ -731,6 +731,7 @@ body {
   .video-title  { font-size: 15.5px; }
   .channel-avatar { width: 38px; height: 38px; }
 }
+
 /* ─── EXTRAS ─── */
 .skeleton-card { display:flex; flex-direction:column; gap:12px; }
 .skeleton-row { display:flex; gap:12px; padding:0 4px; }
@@ -743,6 +744,38 @@ body {
 .retry-btn:hover { background:rgba(255,255,255,.18); }
 .featured-section[hidden] { display:none; }
 
+/* ═══════════════════════════════════════════════════
+   YOUTUBE MASKING (تکنیک سپر شیشه‌ای + سرکوب UI نیتیو)
+   اضافه‌شده طبق درخواست — بدون دست‌زدن به قوانین قبلی
+═══════════════════════════════════════════════════ */
+.yt-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 20; /* قرارگیری دقیقاً روی iframe یوتیوب */
+  cursor: pointer;
+  background: transparent;
+  /* جلوگیری از هرگونه انتخاب متن یا دابل-تپ زوم */
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* نوار پیشرفت اختصاصی AJ Sports (جایگزین نوار یوتیوب) */
+.aj-controls {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  z-index: 21;
+  pointer-events: none; /* تاثیری در کلیک روی ویدیو نداشته باشد */
+}
+
+.aj-progress-fill {
+  height: 100%;
+  background: var(--gold);
+  width: 0%;
+  transition: width 0.15s linear;
+  box-shadow: 0 0 8px var(--gold-glow);
+}
 </style>
 </head>
 <body>
@@ -955,21 +988,53 @@ function showEmbedError(vw, videoId) {
 async function playVideo(mw, videoId, title, { auto = false, onStop = null } = {}) {
   if (!VID_RE.test(videoId)) return;
   stopCurrent();
+
   const vw = document.createElement('div');
   vw.className = 'card-video-wrap active';
+
+  // ۱. کانتینر اصلی ویدیو
   const mount = document.createElement('div');
-  vw.appendChild(mount);
+
+  // ۲. ساخت سپر شیشه‌ای برای مسدود کردن ارتباط مستقیم با یوتیوب
+  const shield = document.createElement('div');
+  shield.className = 'yt-shield';
+  shield.setAttribute('aria-label', 'پخش/توقف');
+
+  // ۳. ساخت نوار پیشرفت اختصاصی
+  const controls = document.createElement('div');
+  controls.className = 'aj-controls';
+  const progressFill = document.createElement('div');
+  progressFill.className = 'aj-progress-fill';
+  controls.appendChild(progressFill);
+
+  // اضافه کردن لایه‌ها به ترتیب (iframe زیر، سپس سپر، سپس کنترلر)
+  vw.append(mount, shield, controls);
   mw.appendChild(vw);
+
   const token = { mw, vw, player: null, auto, onStop };
   current = token;
-  /* هنگام پخش، اسلایدشوی برگزیده متوقف می‌شود (اگر این ویدیو داخل آن است) */
+
   try { await loadYouTubeAPI(); }
   catch (_) { if (current === token) showEmbedError(vw, videoId); return; }
   if (current !== token) return;      /* در این فاصله چیز دیگری پخش/توقف شد */
 
-  const vars = { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1, iv_load_policy: 3, fs: 1, hl: 'fa' };
+  // پارامترهای سرکوبگر: پاکسازی کامل UI
+  const vars = {
+    autoplay: 1,
+    playsinline: 1,
+    controls: 0,          // نابودی کامل نوار پایین
+    disablekb: 1,         // غیرفعال‌سازی کیبورد (جلوگیری از تشخیص شرت‌کات‌ها)
+    rel: 0,               // عدم نمایش ویدیوهای مرتبط
+    modestbranding: 1,    // مخفی‌سازی لوگو
+    iv_load_policy: 3,    // حذف لینک‌ها و انوتیشن‌های روی ویدیو
+    fs: 0,                // حذف دکمه فول‌اسکرین یوتیوب
+    cc_load_policy: 0,    // خاموش کردن اجباری زیرنویس
+    hl: 'fa'
+  };
   if (auto) vars.mute = 1;
   if (/^https?:$/.test(location.protocol)) vars.origin = location.origin;
+
+  let progressInterval = null;
 
   token.player = new YT.Player(mount, {
     host: 'https://www.youtube-nocookie.com',
@@ -979,18 +1044,49 @@ async function playVideo(mw, videoId, title, { auto = false, onStop = null } = {
     playerVars: vars,
     events: {
       onReady: e => {
-        try { e.target.getIframe().title = title || 'YouTube video'; } catch (_) { /* noop */ }
+        try { e.target.getIframe().title = title || 'AJ Sports Media'; } catch (_) { /* noop */ }
         if (auto) e.target.mute();
         e.target.playVideo();
+
+        // موتور همگام‌ساز نوار پیشرفت اختصاصی
+        progressInterval = setInterval(() => {
+          if (token.player && token.player.getCurrentTime) {
+            const duration = token.player.getDuration();
+            const currTime = token.player.getCurrentTime();
+            if (duration > 0) {
+              progressFill.style.width = ((currTime / duration) * 100) + '%';
+            }
+          }
+        }, 150);
       },
-      onStateChange: e => { if (e.data === 0 /* ENDED */ && current === token) stopCurrent(); },
+      onStateChange: e => {
+        if (e.data === 0 /* ENDED */ && current === token) {
+          if (progressInterval) clearInterval(progressInterval);
+          stopCurrent();
+        }
+      },
       onError: () => {
         if (current !== token) return;
         try { token.player.destroy(); } catch (_) { /* noop */ }
         token.player = null;
+        if (progressInterval) clearInterval(progressInterval);
         showEmbedError(vw, videoId);
       },
     },
+  });
+
+  // موتور پروکسی رویدادها (پلی/پاز با کلیک روی سپر شیشه‌ای)
+  shield.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (token.player && token.player.getPlayerState) {
+      const state = token.player.getPlayerState();
+      // استیت ۱ یعنی در حال پخش. استیت ۲ یعنی متوقف.
+      if (state === 1) {
+        token.player.pauseVideo();
+      } else {
+        token.player.playVideo();
+      }
+    }
   });
 }
 
@@ -1438,4 +1534,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 </script>
 </body>
-</html>
+  </html>
